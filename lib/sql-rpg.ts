@@ -216,6 +216,34 @@ export async function submitSqlAttempt({
   return data;
 }
 
+// Record attempt to database
+export async function recordAttemptToDb(
+  userId: string,
+  challengeId: number,
+  sqlText: string,
+  response: SubmitSqlAttemptResult
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('attempts')
+      .insert({
+        user_id: userId,
+        challenge_id: challengeId,
+        sql_text: sqlText,
+        was_success: response.success,
+        damage: response.damage,
+        xp_awarded: response.xpAwarded,
+        was_critical: response.critical,
+      });
+
+    if (error) {
+      console.warn('Failed to record attempt in database:', error.message);
+    }
+  } catch (e) {
+    console.warn('Failed to record attempt:', e);
+  }
+}
+
 // ======================================
 // GAMIFICATION FUNCTIONS
 // ======================================
@@ -318,8 +346,12 @@ export async function updateUserProfileAfterChallenge(
   wasCritical: boolean,
   wasSuccess: boolean
 ): Promise<UserProfile> {
-  const profile = await getUserProfile(userId);
-  if (!profile) throw new Error('Profil bulunamadi.');
+  let profile = await getUserProfile(userId);
+  
+  // Profil yoksa otomatik oluştur
+  if (!profile) {
+    profile = await getOrCreateUserProfile(userId, `Player_${userId.substring(0, 8)}`);
+  }
 
   const newTotalXp = profile.totalXp + xpEarned;
   const newLevel = Math.floor(1 + newTotalXp / 500);
@@ -380,14 +412,14 @@ export async function getUserAchievements(userId: string): Promise<UserAchieveme
   }));
 }
 
-export async function unlockAchievement(userId: string, achievementKey: string): Promise<boolean> {
+export async function unlockAchievement(userId: string, achievementKey: string): Promise<number> {
   const { data: achievement } = await supabase
     .from('achievements')
-    .select('id')
+    .select('id, reward_xp')
     .eq('key', achievementKey)
     .single();
 
-  if (!achievement) return false;
+  if (!achievement) return 0;
 
   const { error } = await supabase
     .from('user_achievements')
@@ -397,7 +429,8 @@ export async function unlockAchievement(userId: string, achievementKey: string):
     }])
     .select();
 
-  return !error;
+  if (error) return 0;
+  return achievement.reward_xp ?? 0;
 }
 
 // MODULE PROGRESS
@@ -452,11 +485,25 @@ export async function updateModuleProgress(
     .eq('module_id', moduleId)
     .single();
 
-  if (!progress.data) {
-    throw new Error('Module progress bulunamadi.');
+  let currentData = progress.data;
+  
+  // Eğer progress kaydı yoksa oluştur
+  if (!currentData) {
+    const { data: created, error: createError } = await supabase
+      .from('user_module_progress')
+      .insert({
+        user_id: userId,
+        module_id: moduleId,
+        progress_percent: wasSuccess ? 10 : 0,
+        last_challenge_id: challengeId,
+      })
+      .select()
+      .single();
+    
+    if (createError) throw new Error(createError.message);
+    currentData = created;
   }
 
-  const currentData = progress.data;
   const newProgressPercent = Math.min(100, currentData.progress_percent + (wasSuccess ? 10 : 0));
   const isCompleted = newProgressPercent >= 100;
 

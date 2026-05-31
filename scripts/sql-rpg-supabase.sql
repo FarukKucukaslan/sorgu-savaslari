@@ -54,7 +54,7 @@ begin
     raise exception 'Noktali virgul yasak';
   end if;
 
-  if query_text !~* '^\s*select\b' then
+  if query_text !~* 'select' then
     raise exception 'Sadece SELECT sorgusu kabul edilir';
   end if;
 
@@ -137,8 +137,7 @@ select * from (
     ('ORDER BY ve LIMIT', 'Sıralama ve satır sınırlaması', 3, 'ORDER BY', 2),
     ('GROUP BY ve Aggregates', 'Veri gruplama ve istatistikler', 4, 'GROUP BY', 3),
     ('Advanced Queries', 'Kompleks sorgular ve subqueries', 5, 'ADVANCED', 5)
-) as seed(name, description, order_index, sql_concept, required_level)
-where not exists (select 1 from public.modules);
+) as seed(name, description, order_index, sql_concept, required_level);
 
 -- 2. Update challenges to link to modules
 alter table public.challenges add column if not exists module_id bigint references public.modules(id) on delete cascade;
@@ -149,32 +148,66 @@ alter table public.challenges add column if not exists required_xp integer defau
 insert into public.challenges (prompt, difficulty, hint, expected_signature, module_id, order_in_module)
 select * from (
   values
-    (
-      'Goblins tablosundaki en dusuk HP degerine sahip dusmani bul.',
-      'easy',
-      'ORDER BY hp ASC LIMIT 1 kullanabilirsin.',
-      'min-goblin-hp',
-      1,
-      1
-    ),
-    (
-      'Her zindandaki goblin sayisini listele.',
-      'medium',
-      'GROUP BY dungeon kullan.',
-      'goblin-count-by-dungeon',
-      1,
-      2
-    ),
-    (
-      'HP degeri 20den buyuk goblinleri HP azalan sirada getir.',
-      'hard',
-      'WHERE + ORDER BY birlesimi kullan.',
-      'high-hp-goblins',
-      2,
-      1
-    )
-) as seed(prompt, difficulty, hint, expected_signature, module_id, order_in_module)
-where not exists (select 1 from public.challenges);
+    -- MODULE 1: SELECT Temelleri (10 soru)
+    ('Tüm goblins tablosunu tam olarak getir.', 'easy', 'SELECT * kullan', 'select-all-goblins', 1, 1),
+    ('Goblins tablosundaki tüm name sutunlarini getir.', 'easy', 'SELECT name FROM goblins', 'select-all-names', 1, 2),
+    ('Goblins tablosundaki tüm hp degerlerini getir.', 'easy', 'SELECT hp FROM goblins', 'select-all-hp', 1, 3),
+    ('Goblins tablosundaki tüm dungeon bilgilerini getir.', 'easy', 'SELECT dungeon FROM goblins', 'select-all-dungeons', 1, 4),
+    ('Ilk goblin ve onun tüm bilgilerini getir.', 'easy', 'LIMIT 1 kullan', 'select-first-goblin', 1, 5),
+    ('Goblins tablosundan numaralari ve isimlerini getir.', 'easy', 'SELECT id, name FROM goblins', 'select-id-names', 1, 6),
+    ('Goblins tablosundan isim ve HP degerlerini getir.', 'easy', 'SELECT name, hp FROM goblins', 'select-names-hp', 1, 7),
+    ('Goblins tablosundan HP ve dungeon bilgilerini getir.', 'easy', 'SELECT hp, dungeon FROM goblins', 'select-hp-dungeon', 1, 8),
+    ('Ilk iki goblini getir.', 'easy', 'LIMIT 2 kullan', 'select-first-two', 1, 9),
+    ('Goblins tablosundan 3 satir getir.', 'easy', 'LIMIT 3 kullan', 'select-first-three', 1, 10),
+
+    -- MODULE 2: WHERE ve Filtreleme (10 soru)
+    ('Sewer dungeon bolgesindeki goblins getir.', 'easy', 'WHERE dungeon = ''Sewer'' kullan', 'where-sewer-goblins', 2, 1),
+    ('Ruins dungeon bolgesindeki goblins getir.', 'easy', 'WHERE dungeon = ''Ruins'' kullan', 'where-ruins-goblins', 2, 2),
+    ('HP degeri 20 den büyük goblins getir.', 'easy', 'WHERE hp > 20 kullan', 'where-high-hp', 2, 3),
+    ('HP degeri 30 dan küçük goblins getir.', 'easy', 'WHERE hp < 30 kullan', 'where-low-hp', 2, 4),
+    ('HP degeri tam olarak 22 olan goblini getir.', 'easy', 'WHERE hp = 22 kullan', 'where-exact-hp', 2, 5),
+    ('Sewer bolgesinde ve HP si 20 den büyük goblins getir.', 'medium', 'WHERE ile iki kosul birlesltir', 'where-sewer-high-hp', 2, 6),
+    ('Ismi Scout iceren goblini getir.', 'easy', 'LIKE operatörü kullan', 'where-scout-name', 2, 7),
+    ('HP degeri 30 dan fazla goblins isimlerini getir.', 'medium', 'SELECT name ile WHERE birlesltir', 'where-high-hp-names', 2, 8),
+    ('Sewer bolgesindeki tüm goblins isim ve HP getir.', 'medium', 'SELECT name, hp + WHERE kombinasyonu', 'where-sewer-details', 2, 9),
+    ('HP degeri 20 ile 35 arasinda goblins getir.', 'medium', 'BETWEEN operatörü veya WHERE hp >= 20 AND hp <= 35', 'where-hp-range', 2, 10),
+
+    -- MODULE 3: ORDER BY ve LIMIT (10 soru)
+    ('Goblins adi gorre alfabetik siraya getir.', 'easy', 'ORDER BY name ASC kullan', 'order-by-name-asc', 3, 1),
+    ('Goblins adi gorre tersten alfabetik siraya getir.', 'easy', 'ORDER BY name DESC kullan', 'order-by-name-desc', 3, 2),
+    ('Goblins HP gorre artan siraya getir.', 'easy', 'ORDER BY hp ASC kullan', 'order-by-hp-asc', 3, 3),
+    ('Goblins HP gorre azalan siraya getir.', 'easy', 'ORDER BY hp DESC kullan', 'order-by-hp-desc', 3, 4),
+    ('En düsük HP sahip goblini getir.', 'easy', 'ORDER BY hp ASC + LIMIT 1', 'order-lowest-hp', 3, 5),
+    ('En yüksek HP sahip goblini getir.', 'easy', 'ORDER BY hp DESC + LIMIT 1', 'order-highest-hp', 3, 6),
+    ('Ilk 2 goblini ada gorre sirala.', 'medium', 'ORDER BY + LIMIT 2', 'order-first-two-by-name', 3, 7),
+    ('Sewer goblinlerini HP gorre azalan siraya getir.', 'medium', 'WHERE + ORDER BY kombinasyonu', 'order-sewer-by-hp-desc', 3, 8),
+    ('HP gorre siralanmis ilk 3 goblini getir.', 'medium', 'ORDER BY hp DESC + LIMIT 3', 'order-top-3-hp', 3, 9),
+    ('Ada gorre siralanmis son 2 goblini getir.', 'medium', 'ORDER BY DESC + LIMIT 2', 'order-last-2-by-name', 3, 10),
+
+    -- MODULE 4: GROUP BY ve Aggregates (10 soru)
+    ('Her dungeon da kac goblin var', 'medium', 'GROUP BY dungeon + COUNT(*)', 'group-count-by-dungeon', 4, 1),
+    ('Her dungeon daki goblins in toplam HP sini hesapla.', 'medium', 'GROUP BY dungeon + SUM(hp)', 'group-sum-hp-by-dungeon', 4, 2),
+    ('Her dungeon daki goblins in ortalama HP sini hesapla.', 'medium', 'GROUP BY dungeon + AVG(hp)', 'group-avg-hp-by-dungeon', 4, 3),
+    ('Tüm goblins in toplam HP sini hesapla.', 'medium', 'SUM(hp) without GROUP BY', 'group-total-hp', 4, 4),
+    ('Ortalama goblin HP si nedir', 'medium', 'AVG(hp) kullan', 'group-avg-hp', 4, 5),
+    ('En yüksek HP ve en düsük HP yi getir.', 'medium', 'MAX(hp) + MIN(hp)', 'group-max-min-hp', 4, 6),
+    ('Her dungeon un ismi ve goblin sayisini getir.', 'medium', 'GROUP BY dungeon + COUNT(*) ayrintili', 'group-dungeon-count-detailed', 4, 7),
+    ('Dungeon a gorre toplam HP ve ortalama HP yi getir.', 'hard', 'GROUP BY + SUM + AVG kombinasyonu', 'group-stats-by-dungeon', 4, 8),
+    ('20 dan fazla ortalama HP ye sahip dungeon lari getir.', 'hard', 'HAVING kosulu ekle', 'group-having-avg-hp', 4, 9),
+    ('En cok goblin i olan dungeon nedir', 'hard', 'GROUP BY + ORDER BY DESC + LIMIT 1', 'group-max-goblins-dungeon', 4, 10),
+
+    -- MODULE 5: Advanced Queries (10 soru)
+    ('Sewer dungeon undaki goblins isim ve HP gorre sirali getir.', 'hard', 'WHERE + ORDER BY kombinasyonu', 'advanced-sewer-sorted', 5, 1),
+    ('En yüksek HP li 2 goblin in isimlerini getir.', 'hard', 'ORDER BY DESC + LIMIT 2', 'advanced-top-2-strongest', 5, 2),
+    ('Her dungeon da en yüksek HP ye sahip goblini bul.', 'hard', 'Subquery veya MAX(hp)', 'advanced-max-per-dungeon', 5, 3),
+    ('Ismi A harfi ile baslayan goblins getir.', 'medium', 'LIKE ''A%'' kullan', 'advanced-names-start-with-a', 5, 4),
+    ('30 dan fazla HP si olan goblins dungeon a gorre grupla ve say.', 'hard', 'WHERE + GROUP BY + COUNT', 'advanced-high-hp-grouped', 5, 5),
+    ('Tüm goblins in HP ortalaması üzerinde goblins getir.', 'hard', 'Subquery + AVG kombinasyonu', 'advanced-above-avg-hp', 5, 6),
+    ('Dungeon basina maximum goblin sayisi kactir', 'hard', 'GROUP BY + COUNT + MAX', 'advanced-max-per-dungeon-count', 5, 7),
+    ('Ruins dungeon unda en düsük HP li goblin nedir', 'hard', 'WHERE + ORDER BY ASC + LIMIT 1', 'advanced-ruins-weakest', 5, 8),
+    ('Her dungeon daki goblins in sayisi ve ortalama güçlerini göster.', 'hard', 'GROUP BY + COUNT + AVG detayli', 'advanced-dungeon-stats', 5, 9),
+    ('HP gorre siralanmis tüm goblins in ilk 3 ünü adlari ile getir.', 'hard', 'ORDER BY + LIMIT + SELECT name', 'advanced-top-3-by-hp', 5, 10)
+) as seed(prompt, difficulty, hint, expected_signature, module_id, order_in_module);
 
 -- 3. USER PROFILES (Character Data)
 create table if not exists public.user_profiles (

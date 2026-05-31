@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -12,11 +12,11 @@ import {
   getModules,
   updateModuleProgress,
   unlockAchievement,
+  recordAttemptToDb,
   type Challenge,
   type SubmitSqlAttemptResult,
   type Module,
 } from '@/lib/sql-rpg';
-import { recordAttempt } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
 export default function ArenaScreen() {
@@ -55,19 +55,36 @@ export default function ArenaScreen() {
     setErrorText('');
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const items = await getChallenges(50);
-      const filtered = items.filter((c) => c.moduleId === selectedModuleId);
+      let filtered = items.filter((c) => c.moduleId === selectedModuleId);
+
+      // Başarıyla çözülen soruları exclude et
+      if (user) {
+        const { data: solvedAttempts } = await supabase
+          .from('attempts')
+          .select('challenge_id')
+          .eq('user_id', user.id)
+          .eq('was_success', true);
+        
+        const solvedIds = new Set(solvedAttempts?.map(a => a.challenge_id) ?? []);
+        filtered = filtered.filter(c => !solvedIds.has(c.id));
+      }
 
       if (filtered.length === 0) {
         setChallenges([]);
-        setErrorText('Bu modülde henüz challenge yok.');
+        setErrorText('Bu modülde tüm soruları başarıyla çözmüşsün!');
         return;
       }
 
+      // FIXED: Eğer önceki modülden soruları değişmiyorsa index reset etme
       setChallenges(filtered);
-      setChallengeIndex(0);
-      setResult(null);
-      setSqlText('');
+      if (challenges.length === 0) {
+        setChallengeIndex(0);
+        setResult(null);
+        setSqlText('');
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Challenge yuklenemedi.';
       setErrorText(message);
@@ -117,7 +134,7 @@ export default function ArenaScreen() {
 
       // Update profile with XP and stats
       if (response.damage > 0 || response.xpAwarded > 0) {
-        await updateUserProfileAfterChallenge(
+        const updatedProfile = await updateUserProfileAfterChallenge(
           user.id,
           response.xpAwarded,
           response.damage,
@@ -127,22 +144,110 @@ export default function ArenaScreen() {
 
         // Update module progress
         if (selectedModuleId) {
-          await updateModuleProgress(user.id, selectedModuleId, activeChallenge.id, response.success);
+          const moduleProgress = await updateModuleProgress(user.id, selectedModuleId, activeChallenge.id, response.success);
+          
+          // Check if module is completed (100%)
+          if (moduleProgress.completed) {
+            const moduleAchievementMap: Record<number, string> = {
+              1: 'select_master',
+              2: 'filter_master',
+              3: 'sort_master',
+              4: 'group_master',
+              5: 'advanced_master',
+            };
+            
+            const moduleAchievementKey = moduleAchievementMap[selectedModuleId];
+            if (moduleAchievementKey) {
+              achievementXp += await unlockAchievement(user.id, moduleAchievementKey);
+            }
+            
+            // Check if all modules are completed for all_modules_done
+            const { data: allProgress } = await supabase
+              .from('user_module_progress')
+              .select('completed')
+              .eq('user_id', user.id);
+            
+            if (allProgress && allProgress.length === 5 && allProgress.every(p => p.completed)) {
+              achievementXp += await unlockAchievement(user.id, 'all_modules_done');
+            }
+          }
         }
 
-        // Unlock achievements
+        // Unlock achievements based on profile stats
+        let achievementXp = 0;
+        
+        // Basic achievements
         if (response.success) {
-          await unlockAchievement(user.id, 'first_select');
+          achievementXp += await unlockAchievement(user.id, 'first_select');
         }
         if (response.critical) {
-          await unlockAchievement(user.id, 'first_critical');
+          achievementXp += await unlockAchievement(user.id, 'first_critical');
+        }
+
+        // Combo achievements
+        if (updatedProfile.currentCombo >= 3) {
+          achievementXp += await unlockAchievement(user.id, 'combo_3');
+        }
+        if (updatedProfile.currentCombo >= 5) {
+          achievementXp += await unlockAchievement(user.id, 'combo_5');
+        }
+        if (updatedProfile.currentCombo >= 10) {
+          achievementXp += await unlockAchievement(user.id, 'combo_10');
+        }
+
+        // Critical hit achievements
+        if (updatedProfile.totalCriticalHits >= 5) {
+          achievementXp += await unlockAchievement(user.id, 'critical_hit_5');
+        }
+        if (updatedProfile.totalCriticalHits >= 10) {
+          achievementXp += await unlockAchievement(user.id, 'critical_hit_10');
+        }
+
+        // Damage achievements
+        if (updatedProfile.totalDamage >= 1000) {
+          achievementXp += await unlockAchievement(user.id, 'damage_1000');
+        }
+
+        // XP achievements
+        if (updatedProfile.totalXp >= 1000) {
+          achievementXp += await unlockAchievement(user.id, 'xp_1000');
+        }
+
+        // Level achievements
+        if (updatedProfile.level >= 5) {
+          achievementXp += await unlockAchievement(user.id, 'level_5');
+        }
+        if (updatedProfile.level >= 10) {
+          achievementXp += await unlockAchievement(user.id, 'level_10');
+        }
+
+        // Add achievement XP to profile if earned (without incrementing attempts)
+        if (achievementXp > 0) {
+          const newTotalXp = updatedProfile.totalXp + achievementXp;
+          const newLevel = Math.floor(1 + newTotalXp / 500);
+          
+          await supabase
+            .from('user_profiles')
+            .update({
+              total_xp: newTotalXp,
+              level: newLevel,
+              last_active: new Date().toISOString(),
+            })
+            .eq('user_id', user.id);
         }
       }
 
       try {
-        void recordAttempt(response);
+        void recordAttemptToDb(user.id, activeChallenge.id, sqlText, response);
       } catch (e) {
         console.warn('Failed to record attempt', e);
+      }
+
+      // Başarılı çözüm veya önceden çözdüyse 2 saniye sonra otomatik geç
+      if (response.success || response.alreadySolved) {
+        setTimeout(() => {
+          goToNext();
+        }, 2000);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sorgu gonderilemedi.';
@@ -158,19 +263,19 @@ export default function ArenaScreen() {
 
   useEffect(() => {
     void loadChallenges();
-  }, [loadChallenges]);
+  }, [selectedModuleId, loadChallenges]);
 
   useFocusEffect(
     useCallback(() => {
+      // Tab açılınca modules refresh et ama challenges'ı reset etme
       void loadModules();
-      void loadChallenges();
-    }, [loadModules, loadChallenges])
+    }, [loadModules])
   );
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
 
   return (
-    <ThemedView style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} scrollEnabled={true}>
       <ThemedText type="title">SQL Arena</ThemedText>
       <ThemedText type="subtitle">Sorgu yazarak saldiri yap</ThemedText>
 
@@ -276,13 +381,12 @@ export default function ArenaScreen() {
           <ThemedText>XP: {result.xpAwarded}</ThemedText>
         </ThemedView>
       ) : null}
-    </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 48,
     paddingBottom: 32,

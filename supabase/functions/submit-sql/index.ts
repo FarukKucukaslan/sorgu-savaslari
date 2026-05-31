@@ -6,6 +6,7 @@ type ArenaResponse = {
   damage: number;
   critical: boolean;
   xpAwarded: number;
+  alreadySolved?: boolean;
 };
 
 type ChallengeRow = {
@@ -79,6 +80,328 @@ function getTextValue(row: Record<string, unknown>, keys: string[]): string | nu
 }
 
 function evaluateAttempt(signature: string, rows: Record<string, unknown>[]): ArenaResponse {
+  // DEBUG: Log incoming data
+  if (signature === 'select-all-goblins') {
+    const len = rows.length;
+    const row0 = JSON.stringify(rows[0] || {});
+    const checks = {
+      lenCheck: len === 4,
+      id: !!rows[0]?.id,
+      name: !!rows[0]?.name,
+      hp: !!rows[0]?.hp,
+      dungeon: !!rows[0]?.dungeon,
+    };
+    
+    if (len === 4 && rows[0]?.id && rows[0]?.name && rows[0]?.hp && rows[0]?.dungeon) {
+      return { success: true, feedback: 'Tüm goblins başarıyla seçildi!', damage: 10, critical: false, xpAwarded: 5 };
+    } else {
+      return failedResponse(`DEBUG select-all-goblins: len=${len}, checks=${JSON.stringify(checks)}, row0=${row0.substring(0, 150)}`);
+    }
+  }
+
+  if (signature === 'select-all-names') {
+    if (rows.length === 4 && rows.every(r => r.name && !r.hp)) {
+      return { success: true, feedback: 'Tüm isimleri başarıyla seçtin!', damage: 10, critical: false, xpAwarded: 5 };
+    }
+  }
+
+  if (signature === 'select-all-hp') {
+    if (rows.length === 4 && rows.every(r => r.hp && !r.name)) {
+      return { success: true, feedback: 'Tüm HP değerlerini seçtin!', damage: 10, critical: false, xpAwarded: 5 };
+    }
+  }
+
+  if (signature === 'select-all-dungeons') {
+    if (rows.length === 4 && rows.every(r => r.dungeon)) {
+      return { success: true, feedback: 'Tüm dungeon\'ları seçtin!', damage: 10, critical: false, xpAwarded: 5 };
+    }
+  }
+
+  if (signature === 'select-first-goblin') {
+    if (rows.length === 1 && rows[0].name && rows[0].hp && rows[0].dungeon) {
+      return { success: true, feedback: 'İlk goblin\'i seçtin!', damage: 10, critical: false, xpAwarded: 5 };
+    }
+  }
+
+  if (signature === 'select-id-names') {
+    if (rows.length === 4 && rows.every(r => r.id && r.name && !r.hp)) {
+      return { success: true, feedback: 'ID ve isim başarıyla seçildi!', damage: 12, critical: false, xpAwarded: 6 };
+    }
+  }
+
+  if (signature === 'select-names-hp') {
+    if (rows.length === 4 && rows.every(r => r.name && r.hp && !r.dungeon)) {
+      return { success: true, feedback: 'İsim ve HP seçimi doğru!', damage: 12, critical: false, xpAwarded: 6 };
+    }
+  }
+
+  if (signature === 'select-hp-dungeon') {
+    if (rows.length === 4 && rows.every(r => r.hp && r.dungeon && !r.name)) {
+      return { success: true, feedback: 'HP ve dungeon seçimi doğru!', damage: 12, critical: false, xpAwarded: 6 };
+    }
+  }
+
+  if (signature === 'select-first-two') {
+    if (rows.length === 2 && rows.every(r => r.name)) {
+      return { success: true, feedback: 'İlk 2 goblin\'i seçtin!', damage: 12, critical: false, xpAwarded: 6 };
+    }
+  }
+
+  if (signature === 'select-first-three') {
+    if (rows.length === 3 && rows.every(r => r.name)) {
+      return { success: true, feedback: 'İlk 3 goblin\'i seçtin!', damage: 15, critical: false, xpAwarded: 7 };
+    }
+  }
+
+  // MODULE 2: WHERE ve Filtreleme
+  if (signature === 'where-sewer-goblins') {
+    if (rows.length === 2 && rows.every(r => r.dungeon === 'Sewer')) {
+      return { success: true, feedback: 'Sewer dungeon\'undaki goblins bulundu!', damage: 15, critical: false, xpAwarded: 8 };
+    }
+  }
+
+  if (signature === 'where-ruins-goblins') {
+    if (rows.length === 2 && rows.every(r => r.dungeon === 'Ruins')) {
+      return { success: true, feedback: 'Ruins dungeon\'undaki goblins bulundu!', damage: 15, critical: false, xpAwarded: 8 };
+    }
+  }
+
+  if (signature === 'where-high-hp') {
+    if (rows.length === 3 && rows.every(r => r.hp > 20)) {
+      return { success: true, feedback: 'HP 20den fazla goblins bulundu!', damage: 18, critical: false, xpAwarded: 9 };
+    }
+  }
+
+  if (signature === 'where-low-hp') {
+    if (rows.length === 3 && rows.every(r => r.hp < 30)) {
+      return { success: true, feedback: 'HP 30dan az goblins bulundu!', damage: 18, critical: false, xpAwarded: 9 };
+    }
+  }
+
+  if (signature === 'where-exact-hp') {
+    if (rows.length === 1 && rows[0].hp === 22) {
+      return { success: true, feedback: 'HP 22 olan goblin bulundu!', damage: 15, critical: false, xpAwarded: 8 };
+    }
+  }
+
+  if (signature === 'where-sewer-high-hp') {
+    if (rows.length === 1 && rows[0].dungeon === 'Sewer' && rows[0].hp > 20) {
+      return { success: true, feedback: 'Sewer\'de yüksek HP goblin bulundu!', damage: 20, critical: true, xpAwarded: 10 };
+    }
+  }
+
+  if (signature === 'where-scout-name') {
+    if (rows.length === 1 && (rows[0].name as string).includes('Scout')) {
+      return { success: true, feedback: 'Scout isimli goblin bulundu!', damage: 15, critical: false, xpAwarded: 8 };
+    }
+  }
+
+  if (signature === 'where-high-hp-names') {
+    if (rows.length === 3 && rows.every(r => r.name && r.hp > 30)) {
+      return { success: true, feedback: 'Yüksek HP goblins isimler seçildi!', damage: 20, critical: false, xpAwarded: 10 };
+    }
+  }
+
+  if (signature === 'where-sewer-details') {
+    if (rows.length === 2 && rows.every(r => r.dungeon === 'Sewer' && r.name && r.hp)) {
+      return { success: true, feedback: 'Sewer dungeon detayları bulundu!', damage: 20, critical: false, xpAwarded: 10 };
+    }
+  }
+
+  if (signature === 'where-hp-range') {
+    if (rows.length === 3 && rows.every(r => r.hp >= 20 && r.hp <= 35)) {
+      return { success: true, feedback: 'HP 20-35 aralığı filtresi doğru!', damage: 22, critical: true, xpAwarded: 11 };
+    }
+  }
+
+  // MODULE 3: ORDER BY ve LIMIT
+  if (signature === 'order-by-name-asc') {
+    if (rows.length === 4 && (rows[0].name as string).includes('Bruiser')) {
+      return { success: true, feedback: 'Alphabetik sıralama ASC doğru!', damage: 18, critical: false, xpAwarded: 9 };
+    }
+  }
+
+  if (signature === 'order-by-name-desc') {
+    if (rows.length === 4 && (rows[0].name as string).includes('Shaman')) {
+      return { success: true, feedback: 'Alphabetik sıralama DESC doğru!', damage: 18, critical: false, xpAwarded: 9 };
+    }
+  }
+
+  if (signature === 'order-by-hp-asc') {
+    if (rows.length === 4 && rows[0].hp === 18) {
+      return { success: true, feedback: 'HP artan sıralama doğru!', damage: 18, critical: false, xpAwarded: 9 };
+    }
+  }
+
+  if (signature === 'order-by-hp-desc') {
+    if (rows.length === 4 && rows[0].hp === 45) {
+      return { success: true, feedback: 'HP azalan sıralama doğru!', damage: 18, critical: false, xpAwarded: 9 };
+    }
+  }
+
+  if (signature === 'order-lowest-hp') {
+    if (rows.length === 1 && rows[0].hp === 18) {
+      return { success: true, feedback: 'En düşük HP bulundu!', damage: 20, critical: true, xpAwarded: 10 };
+    }
+  }
+
+  if (signature === 'order-highest-hp') {
+    if (rows.length === 1 && rows[0].hp === 45) {
+      return { success: true, feedback: 'En yüksek HP bulundu!', damage: 20, critical: true, xpAwarded: 10 };
+    }
+  }
+
+  if (signature === 'order-first-two-by-name') {
+    if (rows.length === 2 && (rows[0].name as string).includes('Bruiser')) {
+      return { success: true, feedback: 'İlk 2 goblin ada göre sıralanmış!', damage: 20, critical: false, xpAwarded: 10 };
+    }
+  }
+
+  if (signature === 'order-sewer-by-hp-desc') {
+    if (rows.length === 2 && rows.every(r => r.dungeon === 'Sewer') && rows[0].hp > rows[1].hp) {
+      return { success: true, feedback: 'Sewer goblins HP\'ye göre DESC sıralanmış!', damage: 25, critical: true, xpAwarded: 12 };
+    }
+  }
+
+  if (signature === 'order-top-3-hp') {
+    if (rows.length === 3 && rows[0].hp >= rows[1].hp && rows[1].hp >= rows[2].hp) {
+      return { success: true, feedback: 'Top 3 HP seçildi!', damage: 22, critical: false, xpAwarded: 11 };
+    }
+  }
+
+  if (signature === 'order-last-2-by-name') {
+    if (rows.length === 2) {
+      return { success: true, feedback: 'Son 2 goblin ada göre seçildi!', damage: 22, critical: false, xpAwarded: 11 };
+    }
+  }
+
+  // MODULE 4: GROUP BY ve Aggregates
+  if (signature === 'group-count-by-dungeon') {
+    const dungeons = rows.filter(r => r.dungeon);
+    if (dungeons.length === 2 && dungeons.every(r => r.count === 2 || r.goblin_count === 2)) {
+      return { success: true, feedback: 'GROUP BY COUNT doğru!', damage: 25, critical: true, xpAwarded: 15 };
+    }
+  }
+
+  if (signature === 'group-sum-hp-by-dungeon') {
+    if (rows.length === 2 && rows.every(r => r.total_hp || r.sum)) {
+      return { success: true, feedback: 'GROUP BY SUM HP doğru!', damage: 25, critical: true, xpAwarded: 15 };
+    }
+  }
+
+  if (signature === 'group-avg-hp-by-dungeon') {
+    if (rows.length === 2 && rows.every(r => r.avg_hp || r.avg)) {
+      return { success: true, feedback: 'GROUP BY AVG HP doğru!', damage: 25, critical: true, xpAwarded: 15 };
+    }
+  }
+
+  if (signature === 'group-total-hp') {
+    if (rows.length === 1) {
+      const total = rows[0].total_hp || rows[0].sum || rows[0].hp;
+      if (total === 117) { // 18+32+22+45
+        return { success: true, feedback: 'Toplam HP hesaplanmış!', damage: 20, critical: false, xpAwarded: 12 };
+      }
+    }
+  }
+
+  if (signature === 'group-avg-hp') {
+    if (rows.length === 1) {
+      return { success: true, feedback: 'Ortalama HP hesaplanmış!', damage: 20, critical: false, xpAwarded: 12 };
+    }
+  }
+
+  if (signature === 'group-max-min-hp') {
+    if (rows.length === 1 && (rows[0].max_hp || rows[0].max) && (rows[0].min_hp || rows[0].min)) {
+      return { success: true, feedback: 'Max ve Min HP bulundu!', damage: 28, critical: true, xpAwarded: 14 };
+    }
+  }
+
+  if (signature === 'group-dungeon-count-detailed') {
+    if (rows.length === 2 && rows.every(r => r.dungeon && (r.count || r.goblin_count))) {
+      return { success: true, feedback: 'Dungeon ve goblin sayıları seçildi!', damage: 25, critical: false, xpAwarded: 13 };
+    }
+  }
+
+  if (signature === 'group-stats-by-dungeon') {
+    if (rows.length === 2 && rows.every(r => r.dungeon && (r.sum || r.total_hp) && (r.avg || r.avg_hp))) {
+      return { success: true, feedback: 'Dungeon istatistikleri tamam!', damage: 30, critical: true, xpAwarded: 16 };
+    }
+  }
+
+  if (signature === 'group-having-avg-hp') {
+    if (rows.length >= 1 && rows.every(r => r.avg_hp > 20 || r.avg > 20)) {
+      return { success: true, feedback: 'HAVING koşulu doğru!', damage: 32, critical: true, xpAwarded: 18 };
+    }
+  }
+
+  if (signature === 'group-max-goblins-dungeon') {
+    if (rows.length === 1 && rows[0].dungeon) {
+      return { success: true, feedback: 'En çok goblin dungeon bulundu!', damage: 32, critical: true, xpAwarded: 18 };
+    }
+  }
+
+  // MODULE 5: Advanced Queries
+  if (signature === 'advanced-sewer-sorted') {
+    if (rows.length === 2 && rows.every(r => r.dungeon === 'Sewer' && r.name && r.hp)) {
+      return { success: true, feedback: 'Advanced Sewer sorgusu başarılı!', damage: 35, critical: true, xpAwarded: 20 };
+    }
+  }
+
+  if (signature === 'advanced-top-2-strongest') {
+    if (rows.length === 2 && rows[0].hp >= rows[1].hp) {
+      return { success: true, feedback: 'Top 2 güçlü goblin bulundu!', damage: 35, critical: true, xpAwarded: 20 };
+    }
+  }
+
+  if (signature === 'advanced-max-per-dungeon') {
+    if (rows.length === 2) {
+      return { success: true, feedback: 'Her dungeon\'un max HP si bulundu!', damage: 40, critical: true, xpAwarded: 25 };
+    }
+  }
+
+  if (signature === 'advanced-names-start-with-a') {
+    if (rows.every(r => (r.name as string).startsWith('G'))) {
+      return { success: true, feedback: 'LIKE pattern seçimi doğru!', damage: 28, critical: false, xpAwarded: 14 };
+    }
+  }
+
+  if (signature === 'advanced-high-hp-grouped') {
+    if (rows.length >= 1 && rows.every(r => r.hp > 30 && r.dungeon && r.count)) {
+      return { success: true, feedback: 'WHERE + GROUP BY advanced doğru!', damage: 40, critical: true, xpAwarded: 25 };
+    }
+  }
+
+  if (signature === 'advanced-above-avg-hp') {
+    if (rows.length >= 1 && rows.every(r => r.hp > 29)) {
+      return { success: true, feedback: 'Subquery ile average karşılaştırma doğru!', damage: 45, critical: true, xpAwarded: 28 };
+    }
+  }
+
+  if (signature === 'advanced-max-per-dungeon-count') {
+    if (rows.length === 1 && rows[0].max_count) {
+      return { success: true, feedback: 'MAX COUNT hesaplaması doğru!', damage: 42, critical: true, xpAwarded: 26 };
+    }
+  }
+
+  if (signature === 'advanced-ruins-weakest') {
+    if (rows.length === 1 && rows[0].dungeon === 'Ruins') {
+      return { success: true, feedback: 'Ruins en zayıf goblin bulundu!', damage: 35, critical: true, xpAwarded: 20 };
+    }
+  }
+
+  if (signature === 'advanced-dungeon-stats') {
+    if (rows.length === 2 && rows.every(r => r.dungeon && r.count && r.avg_hp)) {
+      return { success: true, feedback: 'Dungeon istatistikleri eksiksiz!', damage: 45, critical: true, xpAwarded: 28 };
+    }
+  }
+
+  if (signature === 'advanced-top-3-by-hp') {
+    if (rows.length === 3 && rows[0].hp >= rows[1].hp && rows[1].hp >= rows[2].hp) {
+      return { success: true, feedback: 'Top 3 HP ile isimler doğru!', damage: 40, critical: true, xpAwarded: 25 };
+    }
+  }
+
+  // Eski soruları da destekle
   if (signature === 'min-goblin-hp') {
     const row = rows[0];
     if (!row) {
@@ -167,6 +490,42 @@ Deno.serve(async (request) => {
 
     if (Number.isNaN(normalizedChallengeId) || typeof sql !== 'string') {
       return jsonResponse(failedResponse('challengeId ve sql zorunlu.'));
+    }
+
+    // Authorization header'dan JWT çıkar ve user_id al
+    const authHeader = request.headers.get('authorization');
+    const bearerToken = authHeader?.replace('Bearer ', '');
+    
+    let userId: string | null = null;
+    if (bearerToken) {
+      try {
+        const { data, error } = await adminClient.auth.getUser(bearerToken);
+        if (data?.user) userId = data.user.id;
+      } catch {
+        // JWT parse hatası, user_id'siz devam et
+      }
+    }
+
+    // Eğer user authenticated ise daha önce başarıyla çözdüğü soruyu kontrol et
+    if (userId) {
+      const { data: previousAttempt } = await adminClient
+        .from('attempts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('challenge_id', normalizedChallengeId)
+        .eq('was_success', true)
+        .single();
+      
+      if (previousAttempt) {
+        return jsonResponse({
+          success: false,
+          feedback: 'Bu soruyu zaten başarıyla çözmüşsün! Sonraki soruya geç.',
+          damage: 0,
+          critical: false,
+          xpAwarded: 0,
+          alreadySolved: true,
+        });
+      }
     }
 
     const validationError = validateSql(sql);

@@ -18,13 +18,6 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="modules"
-        options={{
-          title: 'Modüller',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="arena"
         options={{
           title: 'Arena',
@@ -36,13 +29,6 @@ export default function TabLayout() {
         options={{
           title: 'Günlük',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="sun.max.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="skills"
-        options={{
-          title: 'Beceriler',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.fill" color={color} />,
         }}
       />
       <Tabs.Screen
