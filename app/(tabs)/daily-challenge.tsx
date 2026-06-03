@@ -29,6 +29,7 @@ export default function DailyChallengeScreen() {
   const loadChallenge = useCallback(async () => {
     setLoading(true);
     setErrorText('');
+    setTodayAttempted(false);
     try {
       const daily = await getDailyChallenge();
       if (!daily) {
@@ -38,6 +39,30 @@ export default function DailyChallengeScreen() {
         setChallenge(daily);
         setSqlText('');
         setResult(null);
+
+        // Check if user already attempted this challenge today
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: attempt } = await supabase
+            .from('user_daily_attempts')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('daily_challenge_id', daily.dailyChallengeId)
+            .maybeSingle();
+
+          if (attempt) {
+            setTodayAttempted(true);
+            setResult({
+              success: attempt.success,
+              feedback: attempt.success 
+                ? 'Bugünkü challenge\'ı zaten başarıyla tamamladın!' 
+                : 'Bugünkü challenge denemeni zaten yaptın (Tek katılım hakkı vardır).',
+              damage: attempt.success ? 15 : 0,
+              critical: false,
+              xpAwarded: attempt.xp_earned,
+            });
+          }
+        }
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Challenge yuklenemedi.';
@@ -86,22 +111,20 @@ export default function DailyChallengeScreen() {
       await recordDailyAttempt(user.id, challenge.dailyChallengeId, response.success, finalXp);
 
       // Update profile
-      if (response.success || response.damage > 0) {
-        await updateUserProfileAfterChallenge(
-          user.id,
-          finalXp,
-          finalDamage,
-          response.critical,
-          response.success
-        );
+      await updateUserProfileAfterChallenge(
+        user.id,
+        finalXp,
+        finalDamage,
+        response.critical,
+        response.success
+      );
 
-        // Unlock achievements
-        if (response.success) {
-          await unlockAchievement(user.id, 'first_select');
-        }
-        if (response.critical) {
-          await unlockAchievement(user.id, 'first_critical');
-        }
+      // Unlock achievements
+      if (response.success) {
+        await unlockAchievement(user.id, 'first_select');
+      }
+      if (response.critical) {
+        await unlockAchievement(user.id, 'first_critical');
       }
 
       setTodayAttempted(true);
@@ -165,13 +188,13 @@ export default function DailyChallengeScreen() {
         autoCorrect={false}
         placeholder="SELECT ..."
         style={styles.input}
-        editable={!todayAttempted || !result?.success}
+        editable={!todayAttempted}
       />
 
       <Pressable
         style={styles.submitButton}
         onPress={handleSubmit}
-        disabled={submitting || todayAttempted && result?.success}>
+        disabled={submitting || todayAttempted}>
         <ThemedText type="defaultSemiBold">
           {submitting ? 'Gonderiliyor...' : 'Sorguyu Gonder'}
         </ThemedText>

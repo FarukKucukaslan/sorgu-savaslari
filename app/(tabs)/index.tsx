@@ -133,7 +133,7 @@ export default function ArenaScreen() {
       setResult(response);
 
       // Update profile with XP and stats
-      if (response.damage > 0 || response.xpAwarded > 0) {
+      if (!response.alreadySolved) {
         const updatedProfile = await updateUserProfileAfterChallenge(
           user.id,
           response.xpAwarded,

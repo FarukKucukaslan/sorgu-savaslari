@@ -485,6 +485,10 @@ Deno.serve(async (request) => {
       return jsonResponse(failedResponse('Supabase ortam degiskenleri eksik.'));
     }
 
+    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false },
+    });
+
     const { challengeId, sql } = await request.json();
     const normalizedChallengeId = Number(challengeId);
 
@@ -532,10 +536,6 @@ Deno.serve(async (request) => {
     if (validationError) {
       return jsonResponse(failedResponse(validationError));
     }
-
-    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: { persistSession: false },
-    });
 
     const { data: challenge, error: challengeError } = await adminClient
       .from('challenges')

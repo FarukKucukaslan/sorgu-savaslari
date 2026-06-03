@@ -7,11 +7,13 @@ import { ThemedView } from '@/components/themed-view';
 import { getLeaderboard } from '@/lib/sql-rpg';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 import type { LeaderboardEntry } from '@/lib/sql-rpg';
 
 export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const colorScheme = useColorScheme();
 
   const loadLeaderboard = useCallback(async () => {
@@ -19,6 +21,11 @@ export default function LeaderboardScreen() {
     try {
       const data = await getLeaderboard(100);
       setEntries(data);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
     } catch (error) {
       console.error('Leaderboard yuklenemedi:', error);
     } finally {
@@ -57,6 +64,7 @@ export default function LeaderboardScreen() {
         entries.map((entry, index) => {
           const isTopThree = index < 3;
           const medals = ['🥇', '🥈', '🥉'];
+          const isCurrentUser = entry.userId === currentUserId;
 
           return (
             <ThemedView
@@ -64,6 +72,7 @@ export default function LeaderboardScreen() {
               style={[
                 styles.entryCard,
                 isTopThree && styles.topThreeCard,
+                isCurrentUser && styles.currentUserCard,
               ]}>
               <View style={styles.rankSection}>
                 <ThemedText style={styles.medal}>
@@ -125,6 +134,10 @@ const styles = StyleSheet.create({
   topThreeCard: {
     borderColor: '#FCD34D',
     backgroundColor: 'rgba(252, 211, 77, 0.05)',
+  },
+  currentUserCard: {
+    borderColor: '#34D399',
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
   },
   rankSection: {
     justifyContent: 'center',
