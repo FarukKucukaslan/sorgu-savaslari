@@ -1,133 +1,125 @@
-# Welcome to your Expo app 👋
+# ⚔️ Sorgu Savaşları - SQL RPG Oyunu ⚔️
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Sorgu Savaşları, SQL (Structured Query Language) sorgularını oyunlaştırarak öğretmeyi amaçlayan, mobil (React Native/Expo) ve sunucu (NestJS + Supabase) teknolojilerini bir araya getiren yenilikçi bir SQL-RPG (Rol Yapma Oyunu) projesidir.
 
-## Get started
+Bu proje iki farklı ders kapsamında sunulmak üzere geliştirilmiştir:
+1. **Mobil Uygulama Geliştirme**: Expo/React Native tabanlı mobil arayüz.
+2. **Veri Tabanı Sistemleri**: Supabase veri tabanı şeması ve NestJS backend API sunucusu.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
+## 🚀 Proje Mimarisi ve Teknolojiler
+
+Projemiz üç ana katmandan oluşmaktadır:
+- **Frontend (Mobil Uygulama)**: [Expo](https://expo.dev) ve **React Native** (TypeScript) kullanılarak geliştirilmiştir. Dosya tabanlı yönlendirme (`expo-router`) kullanır.
+- **Backend (API Sunucusu)**: **NestJS** (TypeScript) framework'ü kullanılarak modüler yapıda geliştirilmiştir.
+- **Database & Cloud Services**: **Supabase** (PostgreSQL) veri tabanı, Row Level Security (RLS) güvenlik politikaları ve Deno tabanlı **Supabase Edge Functions** (Sorgu doğrulama servisleri).
+
+---
+
+## 📁 Proje Klasör Yapısı
+
+```
+sorgu-savaslari/
+├── src/                # Mobil Uygulama Kaynak Kodları
+│   ├── components/     # Ortak UI/Tema Bileşenleri (Butonlar, Metinler vb.)
+│   ├── constants/      # Renk ve Stil Temaları, Cevap Anahtarları
+│   ├── hooks/          # Tema ve Renk Şeması Kontrol Kancaları
+│   └── lib/            # Supabase Bağlantısı ve Oyun Mantığı (sql-rpg.ts)
+├── app/                # Expo Router Sayfaları (Arayüz Ekranları)
+│   ├── (tabs)/         # Alt Menü Sekmeleri
+│   │   ├── index.tsx   # Arena Sayfası (SQL Sorgu Savaşı Ekranı)
+│   │   ├── daily-challenge.tsx # Günlük Ödüllü Soru Ekranı
+│   │   ├── achievements.tsx    # Başarılar / Madalyalar Ekranı
+│   │   ├── leaderboard.tsx     # Liderlik Tablosu
+│   │   └── profile.tsx         # Oyuncu Profili ve İstatistikleri
+│   └── _layout.tsx     # Ana Uygulama Düzeni ve Anonim Giriş Yönetimi
+├── backend/            # NestJS Backend API Sunucusu (Veri Tabanı Dersi İçin)
+│   ├── src/
+│   │   ├── arena/      # Arena Endpoint'leri, Skor Kayıt ve Kontrol Servisleri
+│   │   └── supabase/   # Supabase Bağlantı Servisi
+│   └── .env            # Backend Gizli Değişkenleri
+├── supabase/           # Veri Tabanı Göçleri ve Edge Functions Kodları
+└── scripts/            # Veri Tabanı Kurulum ve Tohumlama Betiği (SQL)
+```
+
+---
+
+## 🛠️ Kurulum ve Çalıştırma Adımları
+
+### 1️⃣ Ön Gereksinimler
+Bilgisayarınızda **Node.js (v18+)** ve **Git** kurulu olmalıdır. Mobil cihazda test etmek için **Expo Go** uygulamasını indirebilir veya emülatör kullanabilirsiniz.
+
+### 2️⃣ Ortam Değişkenleri (.env) Yapılandırması
+1. **Kök klasörde** `.env` dosyası oluşturun ve şu değerleri girin:
+   ```env
+   EXPO_PUBLIC_SUPABASE_URL=https://ypoqoyaiuguqoccpsbxz.supabase.co
+   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_zwfTqNX00yMdPZGRDXeu4A_I_KAi-jY
+   EXPO_PUBLIC_API_URL=http://localhost:3001
    ```
 
-2. Start the app
-
-   ```bash
-   npx expo start
+2. **`backend/` klasöründe** `backend/.env` dosyası oluşturun:
+   ```env
+   SUPABASE_URL=https://ypoqoyaiuguqoccpsbxz.supabase.co
+   SUPABASE_ANON_KEY=sb_publishable_zwfTqNX00yMdPZGRDXeu4A_I_KAi-jY
+   SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+   PORT=3001
+   NODE_ENV=development
    ```
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+### 3️⃣ Bağımlılıkların Yüklenmesi
+Terminalde proje ana dizininde şu komutları sırasıyla çalıştırın:
 ```bash
-npm run reset-project
+# Frontend paketlerini kur
+npm install
+
+# Backend paketlerini kur
+cd backend
+npm install
+cd ..
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 4️⃣ Veri Tabanının Hazırlanması (Supabase)
+Supabase SQL Editor kısmında `scripts/sql-rpg-supabase.sql` dosyasındaki tüm kodları çalıştırın. Bu işlem:
+- Challenge, Goblin, Attempts, User Profiles, Achievements vb. tüm gerekli tabloları oluşturur.
+- RLS güvenlik kurallarını ve politikalarını tanımlar.
+- Geliştirme ve test sorularını veri tabanına otomatik olarak tohumlar (seed).
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🎮 Uygulamayı Başlatma
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Supabase integration (without auth)
-
-This project is already wired to Supabase with a simple connection smoke test.
-
-### 1) Create local environment file
-
-Create a `.env` file in the project root and copy values from `.env.example`:
-
+### Windows (Önerilen - Tek Tıkla Başlatma)
+Kök dizinde bulunan aşağıdaki dosyayı çalıştırarak hem Backend'i hem de Frontend'i eşzamanlı başlatabilirsiniz:
 ```bash
-EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
+start-dev.bat
 ```
 
-You can find these values in Supabase: Project Settings > API.
+### Manuel Çalıştırma
+İki ayrı terminal penceresi açın:
 
-### 2) Where integration lives
+- **Terminal 1 (Backend - NestJS)**:
+  ```bash
+  cd backend
+  npm run start:dev
+  ```
+  *API Sunucusu http://localhost:3001 adresinde çalışacaktır.*
 
-- Supabase client: `lib/supabase.ts`
-- Connection test screen: `app/(tabs)/index.tsx`
+- **Terminal 2 (Frontend - Expo)**:
+  ```bash
+  # Mobil Emülatör veya Expo Go için:
+  npm run android
+  # veya web tarayıcısında test etmek için:
+  npm run web
+  ```
 
-### 3) Run app
+---
 
-```bash
-npm run start
-```
+## 🌟 Temel Oyun Özellikleri
 
-When the app opens, the Home screen runs a no-auth connection check and shows the HTTP status.
-
-## SQL Arena MVP (Supabase)
-
-This repository now includes a first playable SQL-RPG test surface in `app/(tabs)/arena.tsx`.
-
-### What it does
-
-- Loads challenges from `public.challenges`
-- Accepts only `SELECT` queries on the client side
-- Sends the attempt to Supabase Edge Function `submit-sql`
-- Displays hit/critical/xp style game feedback
-- Includes `Cevaplar` tab where challenge SQL answers can be selected and copied
-- Saves arena results locally and provides an `İstatistikler` tab showing totals (requires @react-native-async-storage/async-storage)
-
-### Supabase bootstrap
-
-Run the SQL file below in Supabase SQL Editor to create seed tables and initial challenge data:
-
-```bash
-scripts/sql-rpg-supabase.sql
-```
-
-### Edge function contract
-
-The app expects an Edge Function named `submit-sql`:
-
-Function source is included at:
-
-```bash
-supabase/functions/submit-sql/index.ts
-```
-
-Deploy command:
-
-```bash
-supabase functions deploy submit-sql
-```
-
-Request body:
-
-```json
-{ "challengeId": 1, "sql": "SELECT * FROM goblins ORDER BY hp ASC LIMIT 1" }
-```
-
-Response body:
-
-```json
-{
-  "success": true,
-  "feedback": "Dogru sonuc, gobline hasar verdin.",
-  "damage": 35,
-  "critical": true,
-  "xpAwarded": 20
-}
-```
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **SQL Arena (Savaş Alanı)**: Karakterlere hasar vermek için `SELECT` sorgularını doğru yazmanız gerekir.
+- **Sonsuz XP Koruması**: Çözülen sorular tekrar çözüldüğünde XP vermez, böylece adil bir oyun ortamı sağlanır.
+- **Günlük Soru (Daily Challenge)**: Her gün yenilenen ödüllü SQL sorusu (günde tek katılım hakkı).
+- **Başarılar Sistemi**: Belirli hasar barajlarını aşma, kombo yapma gibi kriterlerle açılan madalyalar.
+- **Liderlik Tablosu**: Oyuncuların toplam XP'ye göre sıralandığı ve kendi profilinizin yeşil renkle vurgulandığı sıralama ekranı.
+- **Profil ve İstatistikler**: Detaylı deneme sayısı, başarı oranı ve kombo takibi.

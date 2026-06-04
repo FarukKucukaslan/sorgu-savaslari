@@ -478,6 +478,7 @@ Deno.serve(async (request) => {
   }
 
   try {
+    // 1. Ortam değişkenlerinden Supabase bilgilerini Deno üzerinde oku
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -485,10 +486,13 @@ Deno.serve(async (request) => {
       return jsonResponse(failedResponse('Supabase ortam degiskenleri eksik.'));
     }
 
+    // 2. İşlemleri veri tabanı yetkisiyle (admin yetkisiyle bypass RLS) yapabilmek için admin istemcisini oluştur
+    // (Düzeltme: Hata almamak için bu satırı en tepeye, doğrulamadan hemen sonraya taşıdık.)
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { persistSession: false },
     });
 
+    // 3. İstek gövdesinden (request body) challengeId ve SQL sorgusunu al
     const { challengeId, sql } = await request.json();
     const normalizedChallengeId = Number(challengeId);
 
@@ -496,7 +500,7 @@ Deno.serve(async (request) => {
       return jsonResponse(failedResponse('challengeId ve sql zorunlu.'));
     }
 
-    // Authorization header'dan JWT çıkar ve user_id al
+    // 4. İstek başlığındaki (authorization header) JWT token değerinden kullanıcının ID'sini çıkar
     const authHeader = request.headers.get('authorization');
     const bearerToken = authHeader?.replace('Bearer ', '');
     
@@ -506,11 +510,11 @@ Deno.serve(async (request) => {
         const { data, error } = await adminClient.auth.getUser(bearerToken);
         if (data?.user) userId = data.user.id;
       } catch {
-        // JWT parse hatası, user_id'siz devam et
+        // JWT parse hatası durumunda kullanıcıyı anonim sayıp devam et
       }
     }
 
-    // Eğer user authenticated ise daha önce başarıyla çözdüğü soruyu kontrol et
+    // 5. Eğer kullanıcı sisteme kayıtlı ise bu soruyu daha önce başarıyla çözüp çözmediğini denetle (Sonsuz XP Koruması)
     if (userId) {
       const { data: previousAttempt } = await adminClient
         .from('attempts')
@@ -521,6 +525,7 @@ Deno.serve(async (request) => {
         .single();
       
       if (previousAttempt) {
+        // Eğer daha önce başarıyla çözdüyse ödül (XP, Hasar) vermeden hata döndür
         return jsonResponse({
           success: false,
           feedback: 'Bu soruyu zaten başarıyla çözmüşsün! Sonraki soruya geç.',
@@ -532,6 +537,7 @@ Deno.serve(async (request) => {
       }
     }
 
+    // 6. SQL sorgusunun güvenlik (SQL Injection koruması vb.) ve format kurallarına uygunluğunu kontrol et
     const validationError = validateSql(sql);
     if (validationError) {
       return jsonResponse(failedResponse(validationError));

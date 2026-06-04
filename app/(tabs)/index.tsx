@@ -105,15 +105,18 @@ export default function ArenaScreen() {
     setResult(null);
   }, [challengeIndex, challenges.length]);
 
+  // Sorguyu gönderme butonuna tıklandığında tetiklenen ana fonksiyon
   const handleSubmit = useCallback(async () => {
+    // 1. Seçili bir soru (challenge) olup olmadığını denetle
     if (!activeChallenge) {
-      Alert.alert('Uyarı', 'Gecerli bir challenge secili degil.');
+      Alert.alert('Uyarı', 'Geçerli bir challenge seçili değil.');
       return;
     }
 
+    // 2. SQL sorgusunun basit güvenlik ve kural denetimlerini istemci tarafında (client-side) yap
     const validation = validateSqlForArena(sqlText);
     if (!validation.ok) {
-      Alert.alert('Gecersiz sorgu', validation.reason ?? 'Sorgu gecersiz.');
+      Alert.alert('Geçersiz sorgu', validation.reason ?? 'Sorgu geçersiz.');
       return;
     }
 
@@ -122,9 +125,11 @@ export default function ArenaScreen() {
     setErrorText('');
 
     try {
+      // 3. Oturum açmış aktif kullanıcı bilgisini al
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Kullanıcı oturumu yok.');
 
+      // 4. Supabase Edge Function'ı (submit-sql) çağırarak SQL sorgusunu sunucuda çalıştır ve sonucu al
       const response = await submitSqlAttempt({
         challengeId: activeChallenge.id,
         sqlText,
@@ -132,8 +137,9 @@ export default function ArenaScreen() {
 
       setResult(response);
 
-      // Update profile with XP and stats
+      // 5. Eğer soru daha önce çözülmemişse (alreadySolved = false), oyuncunun profil istatistiklerini güncelle
       if (!response.alreadySolved) {
+        // Kullanıcı profiline hasar, XP ekle, deneme sayısını artır ve kombo durumunu işle
         const updatedProfile = await updateUserProfileAfterChallenge(
           user.id,
           response.xpAwarded,
@@ -142,11 +148,11 @@ export default function ArenaScreen() {
           response.success
         );
 
-        // Update module progress
+        // 6. Eğer aktif bir modül seçiliyse modül ilerlemesini (progress) güncelle
         if (selectedModuleId) {
           const moduleProgress = await updateModuleProgress(user.id, selectedModuleId, activeChallenge.id, response.success);
           
-          // Check if module is completed (100%)
+          // Modül %100 tamamlandıysa ilgili modül tamamlama başarımını (achievement) aç
           if (moduleProgress.completed) {
             const moduleAchievementMap: Record<number, string> = {
               1: 'select_master',
@@ -161,7 +167,7 @@ export default function ArenaScreen() {
               achievementXp += await unlockAchievement(user.id, moduleAchievementKey);
             }
             
-            // Check if all modules are completed for all_modules_done
+            // Eğer 5 modülün hepsi tamamlandıysa 'all_modules_done' başarımını aç
             const { data: allProgress } = await supabase
               .from('user_module_progress')
               .select('completed')
@@ -173,10 +179,10 @@ export default function ArenaScreen() {
           }
         }
 
-        // Unlock achievements based on profile stats
+        // 7. Oyuncunun yeni istatistiklerine göre başarım (achievement) kilitlerini aç
         let achievementXp = 0;
         
-        // Basic achievements
+        // İlk başarılı sorgu ve ilk kritik vuruş başarımları
         if (response.success) {
           achievementXp += await unlockAchievement(user.id, 'first_select');
         }
@@ -184,7 +190,7 @@ export default function ArenaScreen() {
           achievementXp += await unlockAchievement(user.id, 'first_critical');
         }
 
-        // Combo achievements
+        // Kombo başarımları (3, 5 ve 10 kombo serileri)
         if (updatedProfile.currentCombo >= 3) {
           achievementXp += await unlockAchievement(user.id, 'combo_3');
         }
@@ -195,7 +201,7 @@ export default function ArenaScreen() {
           achievementXp += await unlockAchievement(user.id, 'combo_10');
         }
 
-        // Critical hit achievements
+        // Toplam kritik vuruş başarımları (5 ve 10 kritik)
         if (updatedProfile.totalCriticalHits >= 5) {
           achievementXp += await unlockAchievement(user.id, 'critical_hit_5');
         }
@@ -203,17 +209,17 @@ export default function ArenaScreen() {
           achievementXp += await unlockAchievement(user.id, 'critical_hit_10');
         }
 
-        // Damage achievements
+        // Toplam hasar başarımı (1000 Hasar)
         if (updatedProfile.totalDamage >= 1000) {
           achievementXp += await unlockAchievement(user.id, 'damage_1000');
         }
 
-        // XP achievements
+        // Toplam XP başarımı (1000 XP)
         if (updatedProfile.totalXp >= 1000) {
           achievementXp += await unlockAchievement(user.id, 'xp_1000');
         }
 
-        // Level achievements
+        // Seviye başarımları (5 ve 10. seviyeler)
         if (updatedProfile.level >= 5) {
           achievementXp += await unlockAchievement(user.id, 'level_5');
         }
@@ -221,7 +227,7 @@ export default function ArenaScreen() {
           achievementXp += await unlockAchievement(user.id, 'level_10');
         }
 
-        // Add achievement XP to profile if earned (without incrementing attempts)
+        // Eğer başarımlardan XP kazanıldıysa bunu oyuncu profiline ekle ve gerekirse seviye atlat
         if (achievementXp > 0) {
           const newTotalXp = updatedProfile.totalXp + achievementXp;
           const newLevel = Math.floor(1 + newTotalXp / 500);
@@ -237,20 +243,21 @@ export default function ArenaScreen() {
         }
       }
 
+      // 8. Bu denemeyi tarihçe (log) olarak 'attempts' tablosuna kaydet
       try {
         void recordAttemptToDb(user.id, activeChallenge.id, sqlText, response);
       } catch (e) {
         console.warn('Failed to record attempt', e);
       }
 
-      // Başarılı çözüm veya önceden çözdüyse 2 saniye sonra otomatik geç
+      // 9. Başarılı çözüm yapıldıysa 2 saniye sonra otomatik olarak sonraki soruya geçiş yap
       if (response.success || response.alreadySolved) {
         setTimeout(() => {
           goToNext();
         }, 2000);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Sorgu gonderilemedi.';
+      const message = error instanceof Error ? error.message : 'Sorgu gönderilemedi.';
       setErrorText(message);
     } finally {
       setIsSubmitting(false);

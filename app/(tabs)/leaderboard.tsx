@@ -11,17 +11,22 @@ import { supabase } from '@/lib/supabase';
 import type { LeaderboardEntry } from '@/lib/sql-rpg';
 
 export default function LeaderboardScreen() {
+  // Liderlik sıralamasındaki satırları tutan state
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  // O an giriş yapmış aktif kullanıcının ID'sini tutan state (Kendimizi yeşil yapmak için kullanacağız)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const colorScheme = useColorScheme();
 
+  // Liderlik tablosundaki verileri veri tabanından çeken fonksiyon
   const loadLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
+      // Supabase'den en yüksek puana sahip ilk 100 kullanıcı kaydını getir
       const data = await getLeaderboard(100);
       setEntries(data);
 
+      // Giriş yapmış aktif kullanıcının oturum bilgilerini getir
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
@@ -33,10 +38,12 @@ export default function LeaderboardScreen() {
     }
   }, []);
 
+  // Sayfa ilk yüklendiğinde verileri çek
   useEffect(() => {
     void loadLeaderboard();
   }, [loadLeaderboard]);
 
+  // Tab (sekme) odaklandığında (yeniden açıldığında) verileri güncel tutmak için tetiklenir
   useFocusEffect(
     useCallback(() => {
       void loadLeaderboard();

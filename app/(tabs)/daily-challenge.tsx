@@ -72,15 +72,18 @@ export default function DailyChallengeScreen() {
     }
   }, []);
 
+  // Günlük challenge sorgusu gönderildiğinde tetiklenen fonksiyon
   const handleSubmit = useCallback(async () => {
+    // 1. Günlük sorunun yüklü olduğunu doğrula
     if (!challenge) {
       Alert.alert('Uyarı', 'Challenge yüklenmemiş.');
       return;
     }
 
+    // 2. SQL sorgusunun basit güvenlik ve kural kontrollerini yap
     const validation = validateSqlForArena(sqlText);
     if (!validation.ok) {
-      Alert.alert('Gecersiz sorgu', validation.reason ?? 'Sorgu gecersiz.');
+      Alert.alert('Geçersiz sorgu', validation.reason ?? 'Sorgu geçersiz.');
       return;
     }
 
@@ -89,15 +92,17 @@ export default function DailyChallengeScreen() {
     setErrorText('');
 
     try {
+      // 3. Giriş yapmış kullanıcıyı al
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Kullanıcı oturumu yok.');
 
+      // 4. Supabase Edge Function üzerinden SQL sorgusunu doğrula ve çalıştır
       const response = await submitSqlAttempt({
         challengeId: challenge.id,
         sqlText,
       });
 
-      // Apply multiplier for daily challenge bonus
+      // 5. Günlük soru için çarpan ödülünü (multiplier) uygula
       const finalXp = Math.floor(response.xpAwarded * challenge.multiplier);
       const finalDamage = Math.floor(response.damage * challenge.multiplier);
 
@@ -107,10 +112,10 @@ export default function DailyChallengeScreen() {
         damage: finalDamage,
       });
 
-      // Record attempt
+      // 6. Bu günlük denemeyi 'user_daily_attempts' tablosuna kaydet (Tek hak kuralını tetikler)
       await recordDailyAttempt(user.id, challenge.dailyChallengeId, response.success, finalXp);
 
-      // Update profile
+      // 7. Oyuncu profilini yeni hasar, XP değerleriyle güncelle (Başarısız olsa dahi deneme sayısını artırır)
       await updateUserProfileAfterChallenge(
         user.id,
         finalXp,
@@ -119,7 +124,7 @@ export default function DailyChallengeScreen() {
         response.success
       );
 
-      // Unlock achievements
+      // 8. Eğer başarılı olduysa genel başarımların kilidini aç
       if (response.success) {
         await unlockAchievement(user.id, 'first_select');
       }
@@ -129,7 +134,7 @@ export default function DailyChallengeScreen() {
 
       setTodayAttempted(true);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Sorgu gonderilemedi.';
+      const msg = error instanceof Error ? error.message : 'Sorgu gönderilemedi.';
       setErrorText(msg);
     } finally {
       setSubmitting(false);
