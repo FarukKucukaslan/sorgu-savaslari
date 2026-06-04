@@ -4,10 +4,10 @@ Bu kılavuz, **Sorgu Savaşları (SQL Arena)** projesinin tamamını kapsar. Fro
 
 ---
 
-## 📁 Bölüm 1: Ortak Yardımcı Araçlar ve Oyun Motoru (`lib/`)
+## 📁 Bölüm 1: Ortak Yardımcı Araçlar ve Oyun Motoru (`src/lib/`)
 
-### 📄 [lib/supabase.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/supabase.ts)
-Uygulamanın Supabase bulut veritabanına bağlanmasını sağlayan ana telefon hattıdır.
+### 📄 [src/lib/supabase.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/supabase.ts)
+Uygulamanın Supabase bulut veritabanına bağlanmasını sağlayan ana bağlantı hattıdır.
 
 * **1. Kütüphane Yüklemeleri:**
   * `AsyncStorage`: Cihazın kalıcı hafızasına veri kaydetmek için.
@@ -22,7 +22,7 @@ Uygulamanın Supabase bulut veritabanına bağlanmasını sağlayan ana telefon 
 
 ---
 
-### 📄 [lib/api-client.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/api-client.ts)
+### 📄 [src/lib/api-client.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/api-client.ts)
 NestJS sunucusuyla konuşan postacı sınıfıdır.
 
 * **1. Adres Belirleme:**
@@ -36,41 +36,41 @@ NestJS sunucusuyla konuşan postacı sınıfıdır.
 
 ---
 
-### 📄 [lib/sql-rpg.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts)
+### 📄 [src/lib/sql-rpg.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts)
 RPG mantığını ve veritabanı sorgularını yürüten **ana oyun motorudur**.
 
 * **1. Veri Yapıları (Types):**
   * `Challenge`, `Module`, `UserProfile`, `Achievement`, `LeaderboardEntry`, `SubmitSqlAttemptResult` gibi oyundaki nesne kalıplarını tanımlar.
-* **2. [validateSqlForArena](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L121-L141) (Güvenlik Kontrolü):**
+* **2. [validateSqlForArena](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L121-L141) (Güvenlik Kontrolü):**
   * Sorgunun boş olmasını, noktalı virgül içermesini (hack engeli) engeller. Yalnızca `SELECT` sorgularına izin verip, veri değiştiren/silen (`DELETE`, `DROP`, `UPDATE` vb.) komutları engeller.
-* **3. [getChallenges](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L143-L164) (Soruları Getirme):**
+* **3. [getChallenges](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L143-L164) (Soruları Getirme):**
   * Veritabanından soruları sıralı olarak çeker ve temiz bir veri dizisine dönüştürür.
-* **4. [submitSqlAttempt](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L166-L217) (Sorgu Gönderme):**
+* **4. [submitSqlAttempt](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L166-L217) (Sorgu Gönderme):**
   * Oyuncunun yazdığı sorguyu Supabase bulut fonksiyonuna (`submit-sql`) yollar ve hasar/XP cevabını alır.
-* **5. [recordAttemptToDb](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L220-L245) (Deneme Kaydı):**
+* **5. [recordAttemptToDb](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L220-L245) (Deneme Kaydı):**
   * Oyuncunun yaptığı her SQL atağını tarihsel takip için `attempts` tablosuna yazar.
-* **6. [getOrCreateUserProfile](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L270-L312) (Profil Oluşturma):**
+* **6. [getOrCreateUserProfile](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L270-L312) (Profil Oluşturma):**
   * Oyuncu ilk kez girdiğinde otomatik misafir profili oluşturur.
-* **7. [updateUserProfileAfterChallenge](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L342-L380) (Profil Güncelleme):**
+* **7. [updateUserProfileAfterChallenge](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L342-L380) (Profil Güncelleme):**
   * Kazanılan XP'yi ekler, her 500 XP'de oyuncuya seviye atlatır (`Math.floor(1 + newTotalXp / 500)`). Doğru cevaplarda kombo sayısını artırır, yanlışlarda sıfırlar.
-* **8. [unlockAchievement](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L415-L434) (Başarım Açma):**
+* **8. [unlockAchievement](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L415-L434) (Başarım Açma):**
   * Oyuncunun kazandığı başarımı kaydeder ve kazanılan ödül XP'sini döner.
-* **9. [updateModuleProgress](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L475-L535) (Modül İlerlemesi):**
+* **9. [updateModuleProgress](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L475-L535) (Modül İlerlemesi):**
   * Modüldeki ilerlemeyi %10 artırır. İlerleme %100 olduğunda modülü tamamlandı olarak işaretler.
-* **10. [getDailyChallenge](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L538-L562) (Günlük Görev Çekme):**
+* **10. [getDailyChallenge](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L538-L562) (Günlük Görev Çekme):**
   * Tarihe göre o günün özel günlük görevini ve XP çarpanını getirir.
-* **11. [getLeaderboard](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/lib/sql-rpg.ts#L583-L601) (Sıralamayı Getirme):**
+* **11. [getLeaderboard](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/lib/sql-rpg.ts#L583-L601) (Sıralamayı Getirme):**
   * Toplam XP'ye göre sıralı kullanıcı listesini döner.
 
 ---
 
-## 📁 Bölüm 2: Ortak Arayüz Bileşenleri (`components/`)
+## 📁 Bölüm 2: Ortak Arayüz Bileşenleri (`src/components/`)
 
-### 📄 [components/haptic-tab.tsx](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/components/haptic-tab.tsx)
+### 📄 [src/components/haptic-tab.tsx](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/components/haptic-tab.tsx)
 * **Titreşim Desteği:**
   * Sadece iOS cihazlarda çalışarak, oyuncu menü tuşuna bastığı an `Haptics.impactAsync()` fonksiyonu ile hafif bir dokunma hissiyatı (`Light`) oluşturur.
 
-### 📄 [components/themed-text.tsx](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/components/themed-text.tsx)
+### 📄 [src/components/themed-text.tsx](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/src/components/themed-text.tsx)
 * **Akıllı Temalı Yazı:**
   * Telefonun koyu (`dark`) ya da açık (`light`) mod durumunu yakalayarak metin rengini otomatik ayarlar. Gelen `type` bilgisine göre başlık (`title`), kalın (`defaultSemiBold`) veya link görünümü verir.
 
@@ -128,7 +128,7 @@ RPG mantığını ve veritabanı sorgularını yürüten **ana oyun motorudur**.
 
 ### 📄 [backend/src/arena/arena.service.ts](file:///c:/Users/MONSTER/MobilUygulamalar/sorgu-savaslari/backend/src/arena/arena.service.ts)
 * **Skor & Hızlı Cevap Bonusu:** Cevap doğruysa 10 puan ekler. Oyuncu soruyu 30 saniyenin altında çözdüyse fazladan 5 puan hızlı cevap bonusu yazar.
-* **Sıralama Hesaplama:** Veritabanından gelen son 100 skor kaydını alır, oyunculara göre gruplayıp toplar, büyükten küçüğe dizer ve en iyi 10 oyuncuyu döner.
+* **Sıralama Hesaplama:** Veritabanından gelen son 100 skor kaydını alır, oyunculara göre gruplayıp toplar, büyükten küçüğe sıralar ve en iyi 10 oyuncuyu döner.
 
 ---
 
