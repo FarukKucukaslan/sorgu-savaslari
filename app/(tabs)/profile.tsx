@@ -79,7 +79,7 @@ export default function ProfileScreen() {
         </ThemedText>
         {profile.characterTitle && (
           <ThemedText type="subtitle" style={styles.title}>
-            "{profile.characterTitle}"
+            &quot;{profile.characterTitle}&quot;
           </ThemedText>
         )}
 
