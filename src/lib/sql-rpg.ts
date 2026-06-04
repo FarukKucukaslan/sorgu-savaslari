@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 // ======================================
-// CHALLENGE & BASIC TYPES
+// SORULAR VE TEMEL TIPLER
 // ======================================
 
 export type Challenge = {
@@ -16,7 +16,7 @@ export type Challenge = {
 };
 
 // ======================================
-// GAMIFICATION TYPES
+// OYUNLASTIRMA TIPLERI
 // ======================================
 
 export type Module = {
@@ -191,7 +191,7 @@ export async function submitSqlAttempt({
           throw new Error(context.error);
         }
       } catch {
-        // try plain text fallback below
+        // asagida duz metin olarak okumayi dene
       }
     }
 
@@ -202,7 +202,7 @@ export async function submitSqlAttempt({
           throw new Error(text);
         }
       } catch {
-        // use default message below
+        // asagidaki varsayilan mesaji kullan
       }
     }
 
@@ -216,7 +216,7 @@ export async function submitSqlAttempt({
   return data;
 }
 
-// Record attempt to database
+// Denemeyi veritabanina kaydet
 export async function recordAttemptToDb(
   userId: string,
   challengeId: number,
@@ -245,10 +245,10 @@ export async function recordAttemptToDb(
 }
 
 // ======================================
-// GAMIFICATION FUNCTIONS
+// OYUNLASTIRMA FONKSIYONLARI
 // ======================================
 
-// MODULES
+// MODULLER
 export async function getModules(): Promise<Module[]> {
   const { data, error } = await supabase
     .from('modules')
@@ -266,9 +266,9 @@ export async function getModules(): Promise<Module[]> {
   }));
 }
 
-// USER PROFILE
+// KULLANICI PROFILI
 export async function getOrCreateUserProfile(userId: string, username: string): Promise<UserProfile> {
-  // Try to fetch existing profile
+  // Mevcut profili cekmeye calis
   const { data: existing } = await supabase
     .from('user_profiles')
     .select('*')
@@ -279,12 +279,12 @@ export async function getOrCreateUserProfile(userId: string, username: string): 
     return mapUserProfile(existing);
   }
 
-  // Generate unique username - use user_id as fallback
+  // Benzersiz kullanici adi olustur - user_id'yi yedek olarak kullan
   const uniqueUsername = username && username.trim() 
     ? `${username}_${userId.substring(0, 6)}` 
     : `Player_${userId.substring(0, 12)}`;
 
-  // If no profile found, use upsert to create or do nothing if exists
+  // Profil bulunamazsa olusturmak icin upsert kullan
   const { data: created, error } = await supabase
     .from('user_profiles')
     .upsert([{
@@ -297,7 +297,7 @@ export async function getOrCreateUserProfile(userId: string, username: string): 
     .single();
 
   if (error) {
-    // If upsert fails, try to fetch the existing profile
+    // Upsert basarisiz olursa mevcut profili cekmeyi dene
     const { data: fallback } = await supabase
       .from('user_profiles')
       .select('*')
@@ -379,7 +379,7 @@ export async function updateUserProfileAfterChallenge(
   return mapUserProfile(data);
 }
 
-// ACHIEVEMENTS
+// BASARIMLAR
 export async function getAchievements(): Promise<Achievement[]> {
   const { data, error } = await supabase
     .from('achievements')
@@ -433,7 +433,7 @@ export async function unlockAchievement(userId: string, achievementKey: string):
   return achievement.reward_xp ?? 0;
 }
 
-// MODULE PROGRESS
+// MODUL ILERLEMESI
 export async function getUserModuleProgress(userId: string): Promise<UserModuleProgress[]> {
   const { data, error } = await supabase
     .from('user_module_progress')
@@ -534,7 +534,7 @@ export async function updateModuleProgress(
   };
 }
 
-// DAILY CHALLENGES
+// GUNLUK GOREVLER
 export async function getDailyChallenge(): Promise<(Challenge & { dailyChallengeId: number; multiplier: number }) | null> {
   const today = new Date().toISOString().split('T')[0];
 
@@ -579,7 +579,7 @@ export async function recordDailyAttempt(
   if (error) throw new Error(error.message);
 }
 
-// LEADERBOARD
+// LIDERLIK TABLOSU
 export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from('user_profiles')
@@ -600,7 +600,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
   }));
 }
 
-// SKILL TREE
+// YETENEK AGACI
 export async function getUserSkills(userId: string): Promise<UserSkill[]> {
   const { data, error } = await supabase
     .from('user_skills')

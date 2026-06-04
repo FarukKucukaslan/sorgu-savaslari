@@ -1,19 +1,19 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import type { Challenge, SubmitSqlAttemptResult } from '@/lib/sql-rpg';
 import {
   getDailyChallenge,
   recordDailyAttempt,
-  validateSqlForArena,
   submitSqlAttempt,
-  updateUserProfileAfterChallenge,
   unlockAchievement,
+  updateUserProfileAfterChallenge,
+  validateSqlForArena,
 } from '@/lib/sql-rpg';
 import { supabase } from '@/lib/supabase';
-import type { Challenge, SubmitSqlAttemptResult } from '@/lib/sql-rpg';
 
 type DailyChallengeData = Challenge & { dailyChallengeId: number; multiplier: number };
 
@@ -40,7 +40,7 @@ export default function DailyChallengeScreen() {
         setSqlText('');
         setResult(null);
 
-        // Check if user already attempted this challenge today
+        // Kullanıcının bugün bu görevi deneyip denemediğini kontrol et
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: attempt } = await supabase
@@ -54,8 +54,8 @@ export default function DailyChallengeScreen() {
             setTodayAttempted(true);
             setResult({
               success: attempt.success,
-              feedback: attempt.success 
-                ? 'Bugünkü challenge\'ı zaten başarıyla tamamladın!' 
+              feedback: attempt.success
+                ? 'Bugünkü challenge\'ı zaten başarıyla tamamladın!'
                 : 'Bugünkü challenge denemeni zaten yaptın (Tek katılım hakkı vardır).',
               damage: attempt.success ? 15 : 0,
               critical: false,
