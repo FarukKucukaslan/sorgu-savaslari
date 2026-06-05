@@ -22,7 +22,7 @@ Projemiz üç ana katmandan oluşmaktadır:
 ```
 sorgu-savaslari/
 ├── src/                # Mobil Uygulama Kaynak Kodları
-│   ├── components/     # Ortak UI/Tema Bileşenleri (Butonlar, Metinler vb.)
+│   ├── components/     # Ortak UI/Tema Bileşenleri (Butonlar, metinler vb.)
 │   ├── constants/      # Renk ve Stil Temaları, Cevap Anahtarları
 │   ├── hooks/          # Tema ve Renk Şeması Kontrol Kancaları
 │   └── lib/            # Supabase Bağlantısı ve Oyun Mantığı (sql-rpg.ts)
